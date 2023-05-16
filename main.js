@@ -13,7 +13,7 @@ const serverConfFile = "/etc/openvpn/server/server.conf"
 let Contract = null;
 let tronWeb = null;
 let smartAddress = "";
-
+const sleep = require('sleep-promise');
 
 
 startHttpServer();
@@ -43,6 +43,9 @@ async function startHttpServer() {
                     case "remove" :
                         await removeVpn(req, res, U.query);
                         break;
+                     case "list" :
+                        await listUser(req, res, U.query);
+                        break;    
                     default :
                         logger.info("pathname not found !", U.pathname);
                 }
@@ -63,17 +66,68 @@ async function startHttpServer() {
 
 async function addVpn(req, res, query){
 
-    
-    const result = shell.exec('/home/bvpn/openvpn-install.sh', { async: true });
-  result.stdin.write('1\n'); // Enter 1
-  result.stdin.write(query.publicKey+'\n'); // Enter name 'ali'
-  result.stdin.write('1\n'); // Press Enter
+
+
+  let file_is_exist = await  fs.existsSync("/root/"+query.publicKey+".ovpn")
+      logger.info('1',file_is_exist)
+
+  if (!file_is_exist) {
+      const result =await shell.exec('/home/bvpn/openvpn-install.sh', { async: true });
+      result.stdin.write('1\n'); // Enter 1
+      result.stdin.write(query.publicKey+'\n'); // Enter name 'ali'
+       result.stdin.write('1\n'); // Press Enter
      result.stdin.end();
-//     let lastdata = readDataFromFile()
-//     lastdata.push('ali')
-//      writeDataToFile(lastdata)
-//   let last = getLastIndex()
-//      logger.info('last index',last)
+      await sleep(2222)
+      let _file = "";
+       const filePath = "/root/"+query.publicKey+".ovpn"; // Replace with the actual file path
+         let file_is_existss = await  fs.existsSync("/root/"+query.publicKey+".ovpn")
+          logger.info('2',file_is_existss)
+// Read the file using ShellJS cat command
+    const _result =await shell.exec('cat '+filePath+'\n');
+    
+    logger.info('catttttt',`cat ${filePath}`)
+    
+    logger.info('catttttt',_result)
+// Check if the command executed successfully
+if (_result.code === 0) {
+  const fileContent = _result.stdout;
+
+  // Print the file content
+  console.log(fileContent);
+         res.write(fileContent)
+ 
+}else{
+    res.write('hello dfdsf')
+}  
+
+  } else {
+        await sleep(2000)
+      let _file = "";
+       const filePath = "/root/"+query.publicKey+".ovpn"; // Replace with the actual file path
+         let file_is_existss = await  fs.existsSync("/root/"+query.publicKey+".ovpn")
+          logger.info('2',file_is_existss)
+// Read the file using ShellJS cat command
+    const _result =await shell.exec('cat '+filePath+'\n');
+    
+    logger.info('catttttt',`cat ${filePath}`)
+    
+    logger.info('catttttt',_result)
+// Check if the command executed successfully
+if (_result.code === 0) {
+  const fileContent = _result.stdout;
+
+  // Print the file content
+  console.log(fileContent);
+         res.write(fileContent)
+ 
+}
+      logger.info('oor is here')
+       
+
+  }
+
+
+  
 
     
 }
@@ -87,166 +141,69 @@ async function removeVpn(req, res, query){
 
   
   result.stdin.write('2\n'); // Enter 1
-  result.stdin.write(query.publicKey+'\n'); // Enter name 'ali'
+   
+  let selecteduser ;
+   result.stdout.on('data', (data) => {
+ logger.info('Console response:', data.toString());
  
+//  const regex = /(\d+)\) ali/;
+ const regex = new RegExp(`(\\d+)\\) ${query.publicKey}`);
+const matches = regex.exec(data.toString());
 
+if (matches && matches[1]) {
+  const numberBeforeAli = parseInt(matches[1]);
+  selecteduser =  logger.info('Number before "ali":', numberBeforeAli);
+    
+  logger.info('selecteduser',parseInt(numberBeforeAli)+'\n')
+// result.stdin.write(parseInt(numberBeforeAli)+'\n'); // Enter name 'ali'
+  result.stdin.write(numberBeforeAli+'\n'); // Enter name 'ali'
+} else {
+  logger.info('No match found for the pattern');
+}
+ 
+ 
+ 
+});
+
+ 
+//   result.stdin.write(query.publicKey+'\n'); // Enter name 'ali'
+  
+logger.on('close', (code) => {
+  console.log('Command exited with code:', code);
+});
   result.stdin.end();
 }
 
-// async function checkUser(req, res, query){
-
-//     if(!tronWeb.isAddress(query.public_key)){
-//         res.write('false');
-//         return;
-//     }
-
-//     let user = await Contract.users(query.public_key).call()
-
-//     if(!user.isExist){
-//         res.write('false');
-//         return;
-//     }
-
-//     let now = new Date();
-
-//     if(tronWeb.BigNumber(user.expireDate).toNumber() * 1000 < now.getTime()){
-//         res.write('false');
-//         return;
-//     }
-
-//     let hash = user.securityKey.replace(/^\$2y(.+)$/i, '$2a$1');
-//     let passCheck = await bcrypt.compare(query.password, hash);
-
-//     if(!passCheck) {
-//         res.write('false');
-//         return;
-//     }
-
-
-//     res.write('true');
-//     return;
-
-// }
-
-// async function networkUsage(req, res, query){
-
-//     let _file = "";
-//     let _version = "<version>" + version + "</version>";
-//     _file += shell.echo(_version);
-//     _file += shell.echo("<tun0>");
-//     _file += shell.exec("vnstat -s -i tun0");
-//     _file += shell.echo("</tun0>");
-//     _file += shell.echo("<eth0>");
-//     _file += shell.exec("vnstat -s -i eth0");
-//     _file += shell.echo("</eth0>");
-//     _file += shell.echo("<ens3>");
-//     _file += shell.exec("vnstat -s -i ens3");
-//     _file += shell.echo("</ens3>");
-
-//     res.write(_file);
-
-// }
-
-// async function info(req, res, query){
-
-//     let _file = "";
-//     let _version = "<version>" + version + "</version>";
-//     let _dns = "<dns>\n" + version + "\n</dns>";
-//     _file += shell.echo(_version);
-//     _file += shell.echo(_dns);
-//     _file += shell.echo("<tun0>");
-//     _file += shell.exec("vnstat -s -i tun0");
-//     _file += shell.echo("</tun0>");
-//     _file += shell.echo("<eth0>");
-//     _file += shell.exec("vnstat -s -i eth0");
-//     _file += shell.echo("</eth0>");
-//     _file += shell.echo("<ens3>");
-//     _file += shell.exec("vnstat -s -i ens3");
-//     _file += shell.echo("</ens3>");
-
-
-//     _file += shell.echo("<dns_server>");
-//     try {
-//         let f1 = await fs.readFileSync(resolveConfFile, "utf8");
-//         let ns = f1.split("\n");
-//         for (let i = 0; i < ns.length; i++) {
-//             if (ns[i].substr(0, 10) === "nameserver") {
-//                 _file += shell.echo(ns[i].substr(10).trim());
-//             }
-//         }
-//     }catch (e) {
-//         console.log(e);
-//     }
-//     _file += shell.echo("</dns_server>");
-
-//     _file += shell.echo("<dns_openvpn>");
-//     try {
-//         let f2 = await fs.readFileSync(serverConfFile, "utf8");
-//         let ov_ns = f2.split("\n");
-//         for (let i = 0; i < ov_ns.length; i++) {
-//             if (ov_ns[i].substr(0, 21) === "push \"dhcp-option DNS") {
-//                 _file += shell.echo(ov_ns[i].substr(21).trim().replace('"', ""));
-//             }
-//         }
-//     }catch (e) {
-//         console.log(e);
-//     }
-//     _file += shell.echo("</dns_openvpn>");
-
-//     res.write(_file);
-
-// }
-
-
-// async function update(req, res, query){
 
 
 
-// }
 
-// async function changeDNS(req, res, query){
 
-//     let new_dns = query.dns;
+async function listUser(req, res, query){
 
-//     if(Array.isArray(new_dns)) {
-//         try {
-//             let f2 = await fs.readFileSync(serverConfFile, "utf8");
-//             let ov_ns = f2.split("\n");
-//             let _file = "";
-//             for (let i = 0; i < ov_ns.length; i++) {
-//                 if (ov_ns[i].trim().length > 0)
-//                     if (ov_ns[i].substr(0, 21) !== "push \"dhcp-option DNS") {
-//                         _file += ov_ns[i] + "\n";
-//                     }
-//             }
+ const result = shell.exec('/home/bvpn/openvpn-install.sh', { async: true });
+    let _listuser ;
+  
+  result.stdin.write('2\n'); // Enter 1
+   
+     result.stdout.on('data',async (data) => {
+    _listuser =await data.toString()
 
-//             for (let i = 0; i < new_dns.length; i++) {
-//                 _file += "push \"dhcp-option DNS " + new_dns[i] + "\"\n";
-//             }
 
-//             await fs.writeFileSync(serverConfFile, _file);
+ 
+});
+  
 
-//         } catch (e) {
-//             console.log(e);
-//         }
+  result.stdin.end();
+ await sleep(2000)
+  logger.info('Console response:', _listuser);
+  await res.write(_listuser)
+}
+ 
 
-//         try {
-//             let _file = "";
-//             for (let i = 0; i < new_dns.length; i++) {
-//                 _file += "nameserver " + new_dns[i] + "\n";
-//             }
 
-//             await fs.writeFileSync(resolveConfFile, _file);
+ 
 
-//         } catch (e) {
-//             console.log(e);
-//         }
 
-//         try{
-//             shell.exec("systemctl restart openvpn");
-//         }catch (e) {
 
-//         }
-//     }
 
-// }
